@@ -1,0 +1,5 @@
+# Shell scripts and device-side files must stay LF — they run on the Kobo /
+# in WSL, where CRLF breaks the shebang and kfmon's ini parser.
+*.sh  text eol=lf
+*.ini text eol=lf
+dist/.adds/nm/minesweeper text eol=lf

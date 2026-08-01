@@ -1,0 +1,1 @@
+menu_item : main : Minesweeper : cmd_spawn : quiet : exec /mnt/onboard/.adds/minesweeper/start.sh
