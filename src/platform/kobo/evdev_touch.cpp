@@ -77,6 +77,8 @@ bool EvdevTouch::init(const DisplayInfo& display) {
 std::optional<Tap> EvdevTouch::waitForTap(int timeoutMs) {
     int rawX = -1, rawY = -1;
     bool sawContact = false, lifted = false;
+    bool downTimeSet = false;
+    std::chrono::steady_clock::time_point downTime{};
 
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
@@ -116,6 +118,10 @@ std::optional<Tap> EvdevTouch::waitForTap(int timeoutMs) {
                 if (e.value == 0) lifted = true;
                 else sawContact = true;
             } else if (e.type == EV_SYN && e.code == SYN_REPORT) {
+                if (sawContact && !downTimeSet) {
+                    downTime = std::chrono::steady_clock::now();
+                    downTimeSet = true;
+                }
                 if (lifted && sawContact && rawX >= 0 && rawY >= 0) {
                     int x = rawX, y = rawY;
                     int maxX = rawMaxX_, minX = rawMinX_, maxY = rawMaxY_, minY = rawMinY_;
@@ -134,9 +140,15 @@ std::optional<Tap> EvdevTouch::waitForTap(int timeoutMs) {
                                  : y;
                     if (mirrorX_) px = viewW_ - 1 - px;
                     if (mirrorY_) py = viewH_ - 1 - py;
+                    auto liftTime = std::chrono::steady_clock::now();
+                    bool longPress =
+                        downTimeSet && std::chrono::duration_cast<std::chrono::milliseconds>(
+                                           liftTime - downTime)
+                                               .count() >= kLongPressMs;
                     if (debug_)
-                        std::fprintf(stderr, "tap raw=(%d,%d) -> (%d,%d)\n", rawX, rawY, px, py);
-                    return Tap{px, py};
+                        std::fprintf(stderr, "tap raw=(%d,%d) -> (%d,%d) longPress=%d\n", rawX,
+                                     rawY, px, py, longPress);
+                    return Tap{px, py, longPress};
                 }
                 lifted = false;
             }

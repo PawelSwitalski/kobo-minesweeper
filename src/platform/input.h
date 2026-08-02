@@ -6,7 +6,12 @@ namespace minesweeper {
 // Display coordinates, post-rotation (same space as Renderer::info()).
 struct Tap {
     int x = 0, y = 0;
+    bool longPress = false;  // true if press-to-release duration >= kLongPressMs
 };
+
+// Shared by every TouchInput backend; not OS-specific, so the "what counts as long" policy
+// lives here rather than per-backend.
+inline constexpr int kLongPressMs = 500;
 
 // See docs/contracts/platform-abstraction.md.
 class TouchInput {

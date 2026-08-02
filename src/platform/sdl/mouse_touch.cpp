@@ -15,9 +15,19 @@ std::optional<Tap> MouseTouch::waitForTap(int timeoutMs) {
             case SDL_QUIT:
                 *quit_ = true;
                 return std::nullopt;
+            case SDL_MOUSEBUTTONDOWN:
+                if (ev.button.button == SDL_BUTTON_LEFT) {
+                    mouseDown_ = true;
+                    downTick_ = ev.button.timestamp;
+                }
+                break;
             case SDL_MOUSEBUTTONUP:
-                if (ev.button.button == SDL_BUTTON_LEFT)
-                    return Tap{ev.button.x, ev.button.y};
+                if (ev.button.button == SDL_BUTTON_LEFT) {
+                    bool longPress = mouseDown_ &&
+                        (ev.button.timestamp - downTick_) >= static_cast<unsigned int>(kLongPressMs);
+                    mouseDown_ = false;
+                    return Tap{ev.button.x, ev.button.y, longPress};
+                }
                 break;
             case SDL_WINDOWEVENT:
                 if (ev.window.event == SDL_WINDOWEVENT_EXPOSED ||

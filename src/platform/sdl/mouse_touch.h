@@ -14,6 +14,8 @@ public:
 private:
     bool* quit_;
     bool* redraw_;
+    bool mouseDown_ = false;
+    unsigned int downTick_ = 0;  // SDL_GetTicks() at SDL_MOUSEBUTTONDOWN
 };
 
 }  // namespace minesweeper

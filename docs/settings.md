@@ -1,10 +1,18 @@
 # Settings
 
-Configuration lives in environment variables in the launcher script
-`.adds/minesweeper/start.sh` on the device. The placeholder demo has no
-in-game settings screen; add one following
-[docs/contracts/platform-abstraction.md](contracts/platform-abstraction.md)
-and the ghosting-interval API on `Renderer::setGhostingInterval`.
+Two layers of configuration exist: the in-app Settings screen (currently just the color
+mode switch, persisted to `settings.json`) and the environment variables in the launcher
+script `.adds/minesweeper/start.sh` on the device, described below.
+
+## In-app Settings screen
+
+Reachable from both the New Game and Board screens. Currently offers one control:
+
+- **Color / Black-and-white**: switches `Theme::color`, which composes the player's choice
+  with the device's actual color capability (`DisplayInfo::color`) — a monochrome device
+  still renders in grayscale even if "Color" is selected. Every board state and number is
+  distinguishable by shape/contrast alone regardless of this setting. Defaults to
+  Black-and-white and persists across restarts in `settings.json`.
 
 ## Launcher settings (`.adds/minesweeper/start.sh`)
 
@@ -61,5 +69,6 @@ Everything lives in `.adds/minesweeper/` on the USB-visible storage:
 | `minesweeper` | The app binary |
 | `start.sh` | Launch wrapper (pause/resume Nickel, env settings) |
 | `assets/` | Fonts |
-| `counter.json` | Created by the app at runtime (placeholder demo state) |
+| `game.json` | Created by the app at runtime: the in-progress/ended game session |
+| `settings.json` | Created by the app at runtime: the color-mode preference |
 | `crash.log` | stderr of the last run — first thing to check if something goes wrong |

@@ -17,9 +17,9 @@ ctest --test-dir build/host -C Release
 
 ## Desktop simulator
 
-Runs the placeholder demo in an SDL2 window — the same UI code as the
-device, so it's the fastest way to iterate. SDL2 is fetched automatically on
-MSVC; on Linux/macOS install it from your package manager.
+Runs the full game in an SDL2 window — the same UI code as the device, so
+it's the fastest way to iterate. SDL2 is fetched automatically on MSVC; on
+Linux/macOS install it from your package manager.
 
 ```bash
 cmake -B build/sim -DMINESWEEPER_BACKEND=sdl
@@ -59,8 +59,8 @@ Pushing a tag matching `v*` additionally publishes a GitHub release with
 the zip attached:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 ## Dependencies
@@ -79,15 +79,14 @@ The dependency set is deliberately tiny and fully vendored:
 ## Source layout
 
 ```
-src/core/       Pure app/game logic, no OS calls (placeholder: Counter)
+src/core/       Pure game logic, no OS calls: Board, GameSession, DifficultyConfig, Settings
 src/persist/    JSON state storage and device paths
 src/platform/   Renderer + touch abstractions; kobo/ (FBInk, evdev) and sdl/ backends
-src/ui/         Screens (placeholder: counter, about), widgets, theme
+src/ui/         Screens (New Game, Board, Settings), widgets, theme
 tests/          doctest unit tests (host)
 dist/           Device package contents (launcher script, NickelMenu/KFMon config, fonts)
-tools/          FBInk build, device packaging, and project-rename scripts
+tools/          FBInk build and device packaging scripts
 docs/contracts/ Reference contracts for the platform abstraction and install layout
+specs/          Spec-driven-development artifacts (spec/plan/tasks) for this feature
 .specify/       Spec-driven-development (spec-kit) framework; .claude/skills/ has its Claude Code skills
 ```
-
-See [SETUP.md](../SETUP.md) for how to start a new project from this template.

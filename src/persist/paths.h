@@ -5,7 +5,8 @@ namespace minesweeper::persist {
 
 struct Paths {
     std::string dataDir;
-    std::string counter;  // dataDir/counter.json — replace/extend with your own state files
+    std::string game;      // dataDir/game.json
+    std::string settings;  // dataDir/settings.json
 };
 
 // Resolution order: cliOverride > $MINESWEEPER_DATA_DIR > /mnt/onboard/.adds/minesweeper

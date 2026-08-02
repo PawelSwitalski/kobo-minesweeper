@@ -1,38 +1,52 @@
-# Minesweeper Template
+# Kobo Minesweeper
 
-A CMake/C++17 template for native Kobo e-reader programs and games: an
-FBInk on-device rendering backend, an SDL2 desktop simulator, NickelMenu +
-KFMon packaging, GitHub Actions cross-build/release CI, and a working
-tap-counter demo proving the whole pipeline end to end.
+A native, fully offline Minesweeper game for Kobo e-readers.
 
-This is a **template**, not a finished app — see [SETUP.md](SETUP.md) to
-start a new project from it.
+Built for the Kobo Libra Colour and portable across the Kobo lineup — one
+ARM binary, with screen geometry computed at runtime. Classic Beginner /
+Intermediate / Expert presets plus custom board sizes, first-click safety,
+cascading reveal, flagging, and chording. No network, no accounts, no ads.
 
-## What's included
+> **Status:** implemented and verified via the full host unit test suite
+> and the SDL desktop simulator; not yet tested on real Kobo hardware.
 
-- 4-layer architecture: `core` (pure logic) / `persist` (atomic JSON
-  save/load) / `platform` (Renderer + TouchInput abstraction, `kobo/` and
-  `sdl/` backends) / `ui` (renderer-agnostic screens and widgets)
-- A minimal working placeholder demo (tap-to-increment counter with
-  autosave and a second screen) exercising every layer
-- Desktop simulator (SDL2) and Kobo device (FBInk, cross-compiled) build
-  flavors from one CMake project
-- NickelMenu + KFMon device packaging (`tools/package.sh`)
-- CI: host tests → Kobo cross-build → tag-triggered GitHub release
-- Spec-driven-development tooling (spec-kit) under `.specify/` and
-  `.claude/skills/`
-- `tools/rename-project.sh` to rebrand a fresh copy into a new project
+## Features
+
+- Beginner (9×9, 10 mines), Intermediate (16×16, 40 mines), and Expert
+  (30×16, 99 mines) presets, plus a custom board (5–16 per side, 1 to
+  width×height−9 mines)
+- First-click safety — the first cell you open is never a mine
+- Cascading flood-fill reveal on blank cells
+- Flag suspected mines with a long-press, or toggle an explicit Flag Mode
+  for one-tap flagging
+- Chording: tap a satisfied numbered cell to open all its remaining safe
+  neighbors at once
+- Color / Black-and-white display modes — every cell state and number
+  stays distinguishable by shape and contrast alone, so black-and-white
+  play never loses information
+- Auto-save after every move; resume any in-progress game, including
+  across app restarts
+- E-ink friendly: minute-granularity timer, partial refreshes for moves,
+  no per-second redraws
+
+## Quick start
+
+1. Install [NickelMenu](https://pgaskin.github.io/NickelMenu/) (one-time,
+   per firmware update).
+2. Download `minesweeper.zip` from the
+   [latest release](https://github.com/PawelSwitalski/kobo-minesweeper/releases/latest)
+   and extract it onto the Kobo's USB drive root.
+3. Eject, open **More** on the device, tap **Minesweeper**.
+
+Full steps, the KFMon alternative and uninstall: [docs/installation.md](docs/installation.md).
 
 ## Documentation
 
 | Document | Contents |
 |---|---|
-| [SETUP.md](SETUP.md) | Start a new project from this template |
 | [Installation](docs/installation.md) | Install, launchers (NickelMenu / KFMon), uninstall |
-| [Settings](docs/settings.md) | Launcher options, touch calibration, device files |
+| [Settings](docs/settings.md) | In-game color-mode settings, launcher options, touch calibration, device files |
 | [Building](docs/building.md) | Host tests, desktop simulator, Kobo cross-build, CI and releases |
-| [Platform abstraction contract](docs/contracts/platform-abstraction.md) | The Renderer/TouchInput interfaces `ui` and backends must honor |
-| [Install layout contract](docs/contracts/install-layout.md) | Device package shape and launcher integration |
 
 ## Building in short
 

@@ -30,7 +30,14 @@ public:
 ## TouchInput (`input.h`)
 
 ```cpp
-struct Tap { int x, y; };   // display coordinates, post-rotation
+struct Tap {
+  int x, y;              // display coordinates, post-rotation
+  bool longPress = false; // true if press-to-release duration >= kLongPressMs
+};
+
+// Shared by every TouchInput backend; not OS-specific, so the "what counts as
+// long" policy lives here rather than per-backend.
+inline constexpr int kLongPressMs = 500;
 
 class TouchInput {
 public:
@@ -41,8 +48,8 @@ public:
 ```
 
 **Backend obligations**:
-- `kobo/EvdevTouch`: reads `/dev/input/event*` multitouch type-B; translates raw coordinates into the same rotated space `Renderer::info()` reports; collapses a touch-down/up pair into one `Tap` (no gestures needed).
-- `sdl/MouseTouch`: mouse click → `Tap`.
+- `kobo/EvdevTouch`: reads `/dev/input/event*` multitouch type-B; translates raw coordinates into the same rotated space `Renderer::info()` reports; collapses a touch-down/up pair into one `Tap` (still no separate gesture types) and additionally times the down→up interval via `steady_clock`, setting `Tap::longPress` against `kLongPressMs`.
+- `sdl/MouseTouch`: mouse click → `Tap`; times `SDL_MOUSEBUTTONDOWN`→`SDL_MOUSEBUTTONUP` against `kLongPressMs` the same way.
 
 ## App loop contract (`main.cpp`)
 

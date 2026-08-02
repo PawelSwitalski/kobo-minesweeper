@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 
+#include "core/settings.h"
 #include "platform/renderer.h"
 
 namespace minesweeper::ui {
@@ -31,5 +32,9 @@ struct Theme {
 };
 
 Theme makeTheme(const DisplayInfo& d, const std::string& assetsDir);
+
+// Theme::color is the AND of hardware capability and player preference: a monochrome
+// device still renders in grayscale even if the player selects "Color" (research.md #7).
+void applyColorMode(Theme& theme, const DisplayInfo& display, core::ColorMode colorMode);
 
 }  // namespace minesweeper::ui

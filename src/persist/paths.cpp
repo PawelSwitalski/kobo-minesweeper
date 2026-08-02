@@ -23,7 +23,8 @@ Paths resolveDataDir(const char* cliOverride) {
 
     Paths p;
     p.dataDir = dir;
-    p.counter = (fs::path(dir) / "counter.json").string();
+    p.game = (fs::path(dir) / "game.json").string();
+    p.settings = (fs::path(dir) / "settings.json").string();
     return p;
 }
 

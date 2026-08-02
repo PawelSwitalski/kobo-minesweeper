@@ -64,7 +64,7 @@ by their own projects.
 ---
 
 **Verification note:** these steps follow the standard Kobo homebrew
-NickelMenu/KFMon pattern (inherited from a project that tested the
-NickelMenu path on real hardware), but this template itself has not been
-re-verified on a physical device — confirm both launchers on your target
-model before shipping.
+NickelMenu/KFMon pattern (inherited from a sibling project, kobo-sudoku,
+that tested the NickelMenu path on real hardware), but this game itself has
+not yet been verified on a physical device — confirm both launchers on your
+target model before relying on it.

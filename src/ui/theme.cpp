@@ -23,4 +23,8 @@ Theme makeTheme(const DisplayInfo& d, const std::string& assetsDir) {
     return t;
 }
 
+void applyColorMode(Theme& theme, const DisplayInfo& display, core::ColorMode colorMode) {
+    theme.color = display.color && colorMode == core::ColorMode::Color;
+}
+
 }  // namespace minesweeper::ui

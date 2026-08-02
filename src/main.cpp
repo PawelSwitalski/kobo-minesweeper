@@ -6,11 +6,14 @@
 #include <string>
 #include <vector>
 
-#include "core/counter.h"
+#include "core/difficulty.h"
+#include "core/game_session.h"
+#include "core/settings.h"
 #include "persist/paths.h"
 #include "persist/store.h"
 #include "ui/app.h"
-#include "ui/screens/counter_screen.h"
+#include "ui/screens/board_screen.h"
+#include "ui/screens/new_game_screen.h"
 #include "ui/theme.h"
 
 #if defined(MINESWEEPER_BACKEND_SDL)
@@ -59,16 +62,27 @@ std::string resolveAssetsDir(const Options& o) {
 
 class AppImpl : public minesweeper::ui::App {
 public:
-    AppImpl(minesweeper::Renderer& r, const minesweeper::ui::Theme& theme,
+    AppImpl(minesweeper::Renderer& r, minesweeper::ui::Theme theme,
             minesweeper::persist::Paths paths)
-        : renderer_(r), theme_(theme), paths_(std::move(paths)) {
-        if (auto text = minesweeper::persist::loadFile(paths_.counter)) {
+        : renderer_(r), theme_(std::move(theme)), paths_(std::move(paths)) {
+        if (auto text = minesweeper::persist::loadFile(paths_.settings)) {
             try {
-                counter_ = minesweeper::core::Counter::fromJson(*text);
+                settings_ = minesweeper::core::Settings::fromJson(*text);
             } catch (const std::exception& e) {
-                // Corrupt save: log, drop the file, degrade to a fresh counter.
-                std::fprintf(stderr, "counter.json rejected: %s\n", e.what());
-                minesweeper::persist::removeFile(paths_.counter);
+                std::fprintf(stderr, "settings.json rejected: %s\n", e.what());
+                minesweeper::persist::removeFile(paths_.settings);
+            }
+        }
+        minesweeper::ui::applyColorMode(theme_, renderer_.info(), settings_.colorMode);
+
+        if (auto text = minesweeper::persist::loadFile(paths_.game)) {
+            try {
+                session_ = minesweeper::core::GameSession::fromJson(*text);
+            } catch (const std::exception& e) {
+                // Corrupt save: log, drop the file, degrade to a fresh NotStarted session.
+                // settings_ above is loaded/validated independently, so it is never affected.
+                std::fprintf(stderr, "game.json rejected: %s\n", e.what());
+                minesweeper::persist::removeFile(paths_.game);
             }
         }
     }
@@ -76,9 +90,22 @@ public:
     minesweeper::Renderer& renderer() override { return renderer_; }
     const minesweeper::ui::Theme& theme() const override { return theme_; }
 
-    minesweeper::core::Counter& counter() override { return counter_; }
-    void autosave() override {
-        minesweeper::persist::saveFileAtomic(paths_.counter, counter_.toJson());
+    minesweeper::core::GameSession& session() override { return session_; }
+    void autosaveSession() override {
+        minesweeper::persist::saveFileAtomic(paths_.game, session_.toJson());
+    }
+    bool hasInProgressGame() const override {
+        return session_.status() == minesweeper::core::Board::Status::InProgress;
+    }
+    void startNewGame(minesweeper::core::DifficultyConfig cfg) override {
+        session_ = minesweeper::core::GameSession(cfg);
+        autosaveSession();
+    }
+
+    minesweeper::core::Settings& settings() override { return settings_; }
+    void autosaveSettings() override {
+        minesweeper::persist::saveFileAtomic(paths_.settings, settings_.toJson());
+        minesweeper::ui::applyColorMode(theme_, renderer_.info(), settings_.colorMode);
     }
 
     void push(std::unique_ptr<minesweeper::ui::Screen> s) override {
@@ -98,10 +125,11 @@ public:
 
 private:
     minesweeper::Renderer& renderer_;
-    const minesweeper::ui::Theme& theme_;
+    minesweeper::ui::Theme theme_;
     minesweeper::persist::Paths paths_;
 
-    minesweeper::core::Counter counter_;
+    minesweeper::core::GameSession session_;
+    minesweeper::core::Settings settings_;
 
     std::vector<std::unique_ptr<minesweeper::ui::Screen>> stack_;
     bool navDirty_ = false;
@@ -150,15 +178,22 @@ int main(int argc, char** argv) {
 
 #if defined(MINESWEEPER_BACKEND_SDL) || defined(MINESWEEPER_BACKEND_FBINK)
     AppImpl app(renderer, theme, paths);
-    app.push(std::make_unique<minesweeper::ui::CounterScreen>(app));
+
+    if (app.hasInProgressGame() ||
+        app.session().status() == minesweeper::core::Board::Status::Won ||
+        app.session().status() == minesweeper::core::Board::Status::Lost) {
+        app.push(std::make_unique<minesweeper::ui::BoardScreen>(app));
+    } else {
+        app.push(std::make_unique<minesweeper::ui::NewGameScreen>(app));
+    }
     app.consumeNavDirty();
     app.top()->draw();
     renderer.flushFull();
 
     const int kTimeoutMs = 20000;       // wakes the loop for periodic housekeeping
     const int kSleepGapMs = 45000;      // wall-clock gap => device slept
-    auto lastSteady = std::chrono::steady_clock::now();
     auto lastWall = std::chrono::system_clock::now();
+    auto lastTickSteady = std::chrono::steady_clock::now();
 
 #if defined(MINESWEEPER_BACKEND_FBINK)
     // Nickel is paused for as long as we're in the foreground (start.sh), so
@@ -183,7 +218,6 @@ int main(int argc, char** argv) {
         auto nowWall = std::chrono::system_clock::now();
         int64_t wallMs =
             std::chrono::duration_cast<std::chrono::milliseconds>(nowWall - lastWall).count();
-        lastSteady = nowSteady;
         lastWall = nowWall;
         bool slept = wallMs > kTimeoutMs + kSleepGapMs || wallMs < 0;
 
@@ -200,7 +234,17 @@ int main(int argc, char** argv) {
             lastTapSteady = nowSteady;
             screen->onTap(*tap);
         } else {
-            screen->onTick(0);
+            // Only screens that count play time accumulate active seconds, and only for the
+            // time since the last tick -- device sleep and menu/settings time are excluded
+            // (FR-016 clarified pause semantics), matching Screen::countsPlayTime()'s contract.
+            uint32_t activeSeconds = 0;
+            if (!slept && screen->countsPlayTime()) {
+                int64_t deltaMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                       nowSteady - lastTickSteady)
+                                       .count();
+                if (deltaMs > 0) activeSeconds = static_cast<uint32_t>(deltaMs / 1000);
+            }
+            screen->onTick(activeSeconds);
 #if defined(MINESWEEPER_BACKEND_FBINK)
             // Any touchscreen activity counts, not just a completed tap (a
             // stray touch, a drag, or sensor noise while resting a finger
@@ -217,6 +261,7 @@ int main(int argc, char** argv) {
                 app.requestExit();
             }
         }
+        lastTickSteady = nowSteady;
 
         if (app.consumeNavDirty()) {
             if (!app.top()) break;
@@ -226,7 +271,8 @@ int main(int argc, char** argv) {
     }
 
     // Never lose progress: persist on every exit path (Constitution V).
-    app.autosave();
+    app.autosaveSession();
+    app.autosaveSettings();
     return 0;
 #endif
 }

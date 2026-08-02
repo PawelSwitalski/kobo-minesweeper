@@ -17,7 +17,10 @@ endif()
 
 # --- Portable core: pure logic, no OS calls ---
 add_library(minesweeper_core STATIC
-  src/core/counter.cpp
+  src/core/difficulty.cpp
+  src/core/board.cpp
+  src/core/game_session.cpp
+  src/core/settings.cpp
 )
 target_include_directories(minesweeper_core PUBLIC src third_party)
 
@@ -32,8 +35,9 @@ target_link_libraries(minesweeper_persist PUBLIC minesweeper_core)
 add_library(minesweeper_ui STATIC
   src/ui/theme.cpp
   src/ui/widgets.cpp
-  src/ui/screens/counter_screen.cpp
-  src/ui/screens/about_screen.cpp
+  src/ui/screens/board_screen.cpp
+  src/ui/screens/new_game_screen.cpp
+  src/ui/screens/settings_screen.cpp
 )
 target_link_libraries(minesweeper_ui PUBLIC minesweeper_core)
 
@@ -97,8 +101,11 @@ if(BUILD_TESTS)
   add_executable(minesweeper_tests
     tests/main.cpp
     tests/test_smoke.cpp
-    tests/test_counter.cpp
     tests/test_persist.cpp
+    tests/test_difficulty.cpp
+    tests/test_board.cpp
+    tests/test_game_session.cpp
+    tests/test_settings.cpp
   )
   target_link_libraries(minesweeper_tests PRIVATE minesweeper_core minesweeper_persist)
   add_test(NAME core COMMAND minesweeper_tests)
