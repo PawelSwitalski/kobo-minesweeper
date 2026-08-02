@@ -1,4 +1,6 @@
 #pragma once
+#include <cstdint>
+
 #include "platform/input.h"
 
 namespace minesweeper::ui {
