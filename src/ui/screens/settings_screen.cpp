@@ -16,6 +16,10 @@ void SettingsScreen::layout() {
     blackWhiteButton_.rect = {t.pad * 2 + btnW, y, btnW, t.touchTargetPx};
     blackWhiteButton_.label = "Black-and-white";
 
+    int hideTimerY = y + t.touchTargetPx + t.gap;
+    hideTimerButton_.rect = {t.pad, hideTimerY, d.width - 2 * t.pad, t.touchTargetPx};
+    hideTimerButton_.label = "Hide Timer";
+
     backButton_.rect = {t.pad, d.height - t.pad - t.touchTargetPx, d.width - 2 * t.pad,
                         t.touchTargetPx};
     backButton_.label = "Back";
@@ -42,6 +46,9 @@ void SettingsScreen::draw() {
     colorButton_.draw(r, t);
     blackWhiteButton_.draw(r, t);
 
+    hideTimerButton_.toggled = app_.settings().hideTimer;
+    hideTimerButton_.draw(r, t);
+
     backButton_.draw(r, t);
 }
 
@@ -55,6 +62,13 @@ void SettingsScreen::onTap(Tap tap) {
     }
     if (blackWhiteButton_.hit(tap)) {
         app_.settings().colorMode = core::ColorMode::BlackAndWhite;
+        app_.autosaveSettings();
+        draw();
+        app_.renderer().flushFull();
+        return;
+    }
+    if (hideTimerButton_.hit(tap)) {
+        app_.settings().hideTimer = !app_.settings().hideTimer;
         app_.autosaveSettings();
         draw();
         app_.renderer().flushFull();

@@ -60,6 +60,7 @@ void BoardScreen::drawTimer() {
     Renderer& r = app_.renderer();
     const Theme& t = app_.theme();
     r.fillRect(timerRect_, Gray::White);
+    if (app_.settings().hideTimer) return;  // FR-007: blank slot, no elapsed-time text
     Label timerLabel;
     timerLabel.rect = timerRect_;
     timerLabel.text = formatTime(app_.session().elapsedSeconds());
@@ -275,6 +276,8 @@ void BoardScreen::onTick(uint32_t activeSeconds) {
     app_.session().addActiveSeconds(activeSeconds);
     app_.autosaveSession();
 
+    if (app_.settings().hideTimer) return;  // nothing on screen to update (FR-011: tracking above
+                                             // stays unconditional; only the redraw is skipped)
     uint32_t minute = app_.session().elapsedSeconds() / 60;
     if (minute != lastDisplayedMinute_) {
         lastDisplayedMinute_ = minute;

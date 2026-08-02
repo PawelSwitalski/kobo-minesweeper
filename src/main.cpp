@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "core/active_time_tracker.h"
 #include "core/difficulty.h"
 #include "core/game_session.h"
 #include "core/settings.h"
@@ -199,7 +200,7 @@ int main(int argc, char** argv) {
     const int kTimeoutMs = 20000;       // wakes the loop for periodic housekeeping
     const int kSleepGapMs = 45000;      // wall-clock gap => device slept
     auto lastWall = std::chrono::system_clock::now();
-    auto lastTickSteady = std::chrono::steady_clock::now();
+    minesweeper::core::ActiveTimeTracker activeTimeTracker(std::chrono::steady_clock::now());
 
 #if defined(MINESWEEPER_BACKEND_FBINK)
     // Nickel is paused for as long as we're in the foreground (start.sh), so
@@ -236,21 +237,20 @@ int main(int argc, char** argv) {
             renderer.flushFull();
         }
 
+        // Active-time bookkeeping runs every iteration -- tap or not -- so no wall-clock
+        // interval between two loop iterations is ever silently dropped (previously only
+        // no-tap iterations fed onTick, undercounting elapsed time during tap-heavy play; see
+        // specs/003-fix-timer-hide-option/research.md #1). Only screens that count play time
+        // accumulate active seconds, and device-sleep gaps are excluded (FR-016 clarified pause
+        // semantics), matching Screen::countsPlayTime()'s contract.
+        uint32_t activeSeconds =
+            activeTimeTracker.tick(nowSteady, !slept && screen->countsPlayTime());
+        screen->onTick(activeSeconds);
+
         if (tap) {
             lastTapSteady = nowSteady;
             screen->onTap(*tap);
         } else {
-            // Only screens that count play time accumulate active seconds, and only for the
-            // time since the last tick -- device sleep and menu/settings time are excluded
-            // (FR-016 clarified pause semantics), matching Screen::countsPlayTime()'s contract.
-            uint32_t activeSeconds = 0;
-            if (!slept && screen->countsPlayTime()) {
-                int64_t deltaMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                       nowSteady - lastTickSteady)
-                                       .count();
-                if (deltaMs > 0) activeSeconds = static_cast<uint32_t>(deltaMs / 1000);
-            }
-            screen->onTick(activeSeconds);
 #if defined(MINESWEEPER_BACKEND_FBINK)
             // Any touchscreen activity counts, not just a completed tap (a
             // stray touch, a drag, or sensor noise while resting a finger
@@ -267,7 +267,6 @@ int main(int argc, char** argv) {
                 app.requestExit();
             }
         }
-        lastTickSteady = nowSteady;
 
         if (app.consumeNavDirty()) {
             if (!app.top()) break;

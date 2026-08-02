@@ -18,6 +18,7 @@ private:
 
     Button colorButton_{};
     Button blackWhiteButton_{};
+    Button hideTimerButton_{};
     Button backButton_{};
 };
 

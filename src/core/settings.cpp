@@ -21,7 +21,10 @@ ColorMode colorModeFromString(const std::string& s) {
 }  // namespace
 
 std::string Settings::toJson() const {
-    return json{{"schemaVersion", 1}, {"colorMode", colorModeToString(colorMode)}}.dump();
+    return json{{"schemaVersion", 1},
+                {"colorMode", colorModeToString(colorMode)},
+                {"hideTimer", hideTimer}}
+        .dump();
 }
 
 Settings Settings::fromJson(const std::string& text) {
@@ -31,6 +34,9 @@ Settings Settings::fromJson(const std::string& text) {
 
     Settings s;
     s.colorMode = colorModeFromString(j.at("colorMode").get<std::string>());
+    // Absent means false: an already-existing settings.json written before this field existed
+    // must still load successfully with hideTimer defaulted, not be rejected outright.
+    s.hideTimer = j.value("hideTimer", false);
     return s;
 }
 
