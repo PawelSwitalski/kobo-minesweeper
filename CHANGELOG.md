@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.0 — 2026-08-02
+
+- Fixed the elapsed-time timer undercounting during active play: it now keeps up with real
+  wall-clock time even during rapid, continuous tapping, and still correctly excludes time spent
+  paused at the menu, in Settings, or asleep.
+- Added a "Hide Timer" setting that removes the live board timer during play (off by default);
+  the final elapsed time still shows on the win/loss screen either way.
+- Added Exit controls on the main menu and board screen, and "Return to Menu"/"Exit" on the
+  win/loss outcome screen — the app previously had no way to quit or return to the menu.
+- Regrouped the New Game menu (presets, Settings, Exit together, then a clearer gap before the
+  Custom section) and fixed an overlap bug in the Custom section header.
+- Each mine-count digit (1–8) now renders in its own distinct color in Color mode.
+
 ## v1.0.0 — 2026-08-02
 
 First release.
