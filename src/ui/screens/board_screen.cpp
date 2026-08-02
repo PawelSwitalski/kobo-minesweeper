@@ -19,11 +19,13 @@ void BoardScreen::layout() {
     timerRect_ = {d.width / 2, hudY, d.width / 2 - t.pad, hudH};
 
     int navY = hudY + hudH + t.gap;
-    int btnW = (d.width - 3 * t.pad) / 2;
+    int btnW = (d.width - 4 * t.pad) / 3;
     flagModeButton_.rect = {t.pad, navY, btnW, t.touchTargetPx};
     flagModeButton_.label = "Flag Mode";
     settingsButton_.rect = {t.pad * 2 + btnW, navY, btnW, t.touchTargetPx};
     settingsButton_.label = "Settings";
+    exitButton_.rect = {t.pad * 3 + btnW * 2, navY, btnW, t.touchTargetPx};
+    exitButton_.label = "Exit";
 
     int gridTop = navY + t.touchTargetPx + t.gap;
     int availW = d.width - 2 * t.pad;
@@ -96,7 +98,21 @@ void BoardScreen::drawCell(int x, int y) {
                 glyphShade = Gray::White;
             } else if (c.adjacentMines > 0) {
                 glyph = std::to_string(c.adjacentMines);
-                if (app_.theme().color) accent = Color::Red;  // accent only, never sole meaning
+                // Per-count color in Color mode only (accent/shade, never the sole meaning --
+                // the printed digit itself is unchanged either way). See
+                // specs/002-fix-menu-exit-colors/contracts/digit-color-mapping.md.
+                if (app_.theme().color) {
+                    switch (c.adjacentMines) {
+                        case 1: accent = Color::Blue; break;
+                        case 2: accent = Color::Green; break;
+                        case 3: accent = Color::Red; break;
+                        case 4: accent = Color::Navy; break;
+                        case 5: accent = Color::Crimson; break;
+                        case 6: accent = Color::Cyan; break;
+                        case 8: glyphShade = Gray::Mid; break;
+                        default: break;  // 7 stays plain black (Color::None, Gray::Black)
+                    }
+                }
             }
             break;
     }
@@ -124,8 +140,9 @@ void BoardScreen::drawOutcomeBanner() {
     const core::GameSession& session = app_.session();
 
     bool won = session.status() == core::Board::Status::Won;
-    Rect banner = {t.pad, gridRect_.y + gridRect_.h / 2 - t.touchTargetPx,
-                   d.width - 2 * t.pad, t.touchTargetPx * 2};
+    int bannerH = t.pad * 2 + t.titlePx + t.textPx + t.gap + t.touchTargetPx;
+    Rect banner = {t.pad, gridRect_.y + gridRect_.h / 2 - bannerH / 2,
+                   d.width - 2 * t.pad, bannerH};
     r.fillRect(banner, Gray::White);
     Gray frameShade = Gray::Black;
     r.fillRect({banner.x, banner.y, banner.w, t.thickLine}, frameShade);
@@ -145,6 +162,15 @@ void BoardScreen::drawOutcomeBanner() {
     detail.text = formatTime(session.elapsedSeconds());
     detail.sizePx = t.textPx;
     detail.draw(r, t);
+
+    int buttonY = banner.y + t.pad + t.titlePx + t.textPx + t.gap;
+    int btnW = (banner.w - 3 * t.pad) / 2;
+    returnToMenuButton_.rect = {banner.x + t.pad, buttonY, btnW, t.touchTargetPx};
+    returnToMenuButton_.label = "Return to Menu";
+    outcomeExitButton_.rect = {banner.x + t.pad * 2 + btnW, buttonY, btnW, t.touchTargetPx};
+    outcomeExitButton_.label = "Exit";
+    returnToMenuButton_.draw(r, t);
+    outcomeExitButton_.draw(r, t);
 }
 
 void BoardScreen::draw() {
@@ -159,6 +185,7 @@ void BoardScreen::draw() {
     flagModeButton_.toggled = flagModeOn_;
     flagModeButton_.draw(r, t);
     settingsButton_.draw(r, t);
+    exitButton_.draw(r, t);
 
     const core::Board& board = app_.session().board();
     for (int y = 0; y < board.height(); ++y)
@@ -207,10 +234,17 @@ void BoardScreen::onTap(Tap tap) {
         app_.push(std::make_unique<SettingsScreen>(app_));
         return;
     }
+    if (exitButton_.hit(tap)) {
+        app_.requestExit();
+        return;
+    }
 
     core::Board::Status status = app_.session().status();
-    if (status == core::Board::Status::Won || status == core::Board::Status::Lost)
+    if (status == core::Board::Status::Won || status == core::Board::Status::Lost) {
+        if (returnToMenuButton_.hit(tap)) { app_.returnToMainMenu(); return; }
+        if (outcomeExitButton_.hit(tap)) { app_.requestExit(); return; }
         return;  // board actions are inert once the game has ended (FR-018)
+    }
 
     if (!gridRect_.contains({tap.x, tap.y})) return;
     const core::Board& board = app_.session().board();

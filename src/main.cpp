@@ -117,6 +117,12 @@ public:
         navDirty_ = true;
     }
     void requestExit() override { exitRequested_ = true; }
+    void returnToMainMenu() override {
+        session_ = minesweeper::core::GameSession();  // fresh NotStarted session (FR-006)
+        autosaveSession();
+        stack_.clear();
+        push(std::make_unique<minesweeper::ui::NewGameScreen>(*this));
+    }
 
     // --- app-shell surface (not part of the Screen-facing interface) ---
     minesweeper::ui::Screen* top() { return stack_.empty() ? nullptr : stack_.back().get(); }

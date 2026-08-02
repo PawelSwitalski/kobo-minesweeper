@@ -22,8 +22,15 @@ namespace {
 void resolveColor(Gray shade, Color accent, bool colorDisplay, uint8_t& r, uint8_t& g,
                   uint8_t& b) {
     r = g = b = static_cast<uint8_t>(shade);
-    if (colorDisplay && accent == Color::Red) {
-        r = 0xB4; g = 0x20; b = 0x20;
+    if (!colorDisplay) return;
+    switch (accent) {
+        case Color::Red:     r = 0xB4; g = 0x20; b = 0x20; break;  // mine-count 3
+        case Color::Blue:    r = 0x10; g = 0x30; b = 0xC0; break;  // mine-count 1
+        case Color::Green:   r = 0x12; g = 0x7A; b = 0x12; break;  // mine-count 2
+        case Color::Navy:    r = 0x0A; g = 0x18; b = 0x68; break;  // mine-count 4 ("deep blue")
+        case Color::Crimson: r = 0x8B; g = 0x0A; b = 0x2A; break;  // mine-count 5 ("cherry red")
+        case Color::Cyan:    r = 0x0A; g = 0x7A; b = 0x82; break;  // mine-count 6
+        case Color::None:    break;  // keep the grayscale shade already set above
     }
 }
 

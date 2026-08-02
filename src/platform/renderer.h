@@ -28,8 +28,10 @@ enum class Gray : uint8_t {
     White = 0xFF,
 };
 
-// Accent color: optional, meaning must never be encoded in color alone (FR-014).
-enum class Color : uint8_t { None, Red };
+// Accent color: optional, meaning must never be encoded in color alone (FR-014). Blue/Green/Red/
+// Navy/Crimson/Cyan are the mine-count digit colors 1/2/3/4/5/6 respectively (digits 7 and 8 use
+// the Gray shade axis instead -- see specs/002-fix-menu-exit-colors/research.md #5).
+enum class Color : uint8_t { None, Red, Blue, Green, Navy, Crimson, Cyan };
 
 struct TextStyle {
     int sizePx = 24;

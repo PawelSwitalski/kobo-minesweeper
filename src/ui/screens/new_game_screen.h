@@ -35,7 +35,9 @@ private:
 
     Button beginnerButton_{}, intermediateButton_{}, expertButton_{};
     Button settingsButton_{};
+    Button exitButton_{};
 
+    Rect customTitleRect_{};
     Button widthMinus_{}, widthPlus_{};
     Button heightMinus_{}, heightPlus_{};
     Button minesMinus_{}, minesPlus_{};

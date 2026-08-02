@@ -38,6 +38,12 @@ public:
     virtual void push(std::unique_ptr<Screen> s) = 0;
     virtual void pop() = 0;
     virtual void requestExit() = 0;
+    // Resets the session to a fresh, unstarted game (clearing any finished game's
+    // resume-on-launch state) and replaces the whole screen stack with a fresh NewGameScreen.
+    // Unlike pop(), this never depends on stack depth: BoardScreen may be the sole stack root
+    // when a finished game was resumed at launch, so a plain pop() could empty the stack instead
+    // of reaching the menu.
+    virtual void returnToMainMenu() = 0;
 };
 
 }  // namespace minesweeper::ui

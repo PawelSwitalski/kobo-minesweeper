@@ -36,6 +36,9 @@ private:
     Rect timerRect_{};
     Button flagModeButton_{};
     Button settingsButton_{};
+    Button exitButton_{};
+    Button returnToMenuButton_{};
+    Button outcomeExitButton_{};
     bool flagModeOn_ = false;
     uint32_t lastDisplayedMinute_ = 0xFFFFFFFFu;
 };

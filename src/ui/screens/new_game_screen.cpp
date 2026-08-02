@@ -34,7 +34,19 @@ void NewGameScreen::layout() {
 
     settingsButton_.rect = {t.pad, y, fullW, t.touchTargetPx};
     settingsButton_.label = "Settings";
+    y += t.touchTargetPx + t.gap;
+
+    exitButton_.rect = {t.pad, y, fullW, t.touchTargetPx};
+    exitButton_.label = "Exit";
+    // Gap before the Custom section is double the inter-item gap above, so the section reads as
+    // a visually distinct block rather than another preset choice (FR-008).
     y += t.touchTargetPx + t.gap * 2;
+
+    // The "Custom" header gets its own reserved row rather than being squeezed backward into the
+    // gap above (which is only 2*t.gap tall, less than textPx+gap) -- doing so used to overlap
+    // the last button in the group above it.
+    customTitleRect_ = {t.pad, y, fullW, t.textPx};
+    y += t.textPx + t.gap;
 
     int stepW = t.touchTargetPx;
     int valueW = fullW - 2 * stepW - 2 * t.gap;
@@ -179,10 +191,10 @@ void NewGameScreen::draw() {
     intermediateButton_.draw(r, t);
     expertButton_.draw(r, t);
     settingsButton_.draw(r, t);
+    exitButton_.draw(r, t);
 
     Label customTitle;
-    customTitle.rect = {t.pad, widthMinus_.rect.y - t.textPx - t.gap, d.width - 2 * t.pad,
-                        t.textPx};
+    customTitle.rect = customTitleRect_;
     customTitle.text = "Custom";
     customTitle.bold = true;
     customTitle.align = TextStyle::Align::Left;
@@ -247,6 +259,10 @@ void NewGameScreen::onTap(Tap tap) {
     if (expertButton_.hit(tap)) { requestStart(core::DifficultyConfig::expert()); return; }
     if (settingsButton_.hit(tap)) {
         app_.push(std::make_unique<SettingsScreen>(app_));
+        return;
+    }
+    if (exitButton_.hit(tap)) {
+        app_.requestExit();
         return;
     }
 
