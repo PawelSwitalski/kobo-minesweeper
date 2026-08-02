@@ -20,6 +20,20 @@ void SettingsScreen::layout() {
     hideTimerButton_.rect = {t.pad, hideTimerY, d.width - 2 * t.pad, t.touchTargetPx};
     hideTimerButton_.label = "Hide Timer";
 
+    int screenRefreshLabelY = hideTimerY + t.touchTargetPx + t.gap;
+    screenRefreshLabelRect_ = {t.pad, screenRefreshLabelY, d.width - 2 * t.pad, t.textPx};
+
+    int screenRefreshY = screenRefreshLabelY + t.textPx + t.gap;
+    int btn4W = (d.width - 5 * t.pad) / 4;
+    refresh5Button_.rect = {t.pad, screenRefreshY, btn4W, t.touchTargetPx};
+    refresh5Button_.label = "5";
+    refresh10Button_.rect = {t.pad * 2 + btn4W, screenRefreshY, btn4W, t.touchTargetPx};
+    refresh10Button_.label = "10";
+    refresh25Button_.rect = {t.pad * 3 + btn4W * 2, screenRefreshY, btn4W, t.touchTargetPx};
+    refresh25Button_.label = "25";
+    refreshNeverButton_.rect = {t.pad * 4 + btn4W * 3, screenRefreshY, btn4W, t.touchTargetPx};
+    refreshNeverButton_.label = "Never";
+
     backButton_.rect = {t.pad, d.height - t.pad - t.touchTargetPx, d.width - 2 * t.pad,
                         t.touchTargetPx};
     backButton_.label = "Back";
@@ -49,6 +63,22 @@ void SettingsScreen::draw() {
     hideTimerButton_.toggled = app_.settings().hideTimer;
     hideTimerButton_.draw(r, t);
 
+    Label screenRefreshLabel;
+    screenRefreshLabel.rect = screenRefreshLabelRect_;
+    screenRefreshLabel.text = "Screen Refresh";
+    screenRefreshLabel.align = TextStyle::Align::Left;
+    screenRefreshLabel.draw(r, t);
+
+    core::ScreenRefreshInterval interval = app_.settings().screenRefreshInterval;
+    refresh5Button_.toggled = interval == core::ScreenRefreshInterval::Every5;
+    refresh10Button_.toggled = interval == core::ScreenRefreshInterval::Every10;
+    refresh25Button_.toggled = interval == core::ScreenRefreshInterval::Every25;
+    refreshNeverButton_.toggled = interval == core::ScreenRefreshInterval::Never;
+    refresh5Button_.draw(r, t);
+    refresh10Button_.draw(r, t);
+    refresh25Button_.draw(r, t);
+    refreshNeverButton_.draw(r, t);
+
     backButton_.draw(r, t);
 }
 
@@ -69,6 +99,34 @@ void SettingsScreen::onTap(Tap tap) {
     }
     if (hideTimerButton_.hit(tap)) {
         app_.settings().hideTimer = !app_.settings().hideTimer;
+        app_.autosaveSettings();
+        draw();
+        app_.renderer().flushFull();
+        return;
+    }
+    if (refresh5Button_.hit(tap)) {
+        app_.settings().screenRefreshInterval = core::ScreenRefreshInterval::Every5;
+        app_.autosaveSettings();
+        draw();
+        app_.renderer().flushFull();
+        return;
+    }
+    if (refresh10Button_.hit(tap)) {
+        app_.settings().screenRefreshInterval = core::ScreenRefreshInterval::Every10;
+        app_.autosaveSettings();
+        draw();
+        app_.renderer().flushFull();
+        return;
+    }
+    if (refresh25Button_.hit(tap)) {
+        app_.settings().screenRefreshInterval = core::ScreenRefreshInterval::Every25;
+        app_.autosaveSettings();
+        draw();
+        app_.renderer().flushFull();
+        return;
+    }
+    if (refreshNeverButton_.hit(tap)) {
+        app_.settings().screenRefreshInterval = core::ScreenRefreshInterval::Never;
         app_.autosaveSettings();
         draw();
         app_.renderer().flushFull();

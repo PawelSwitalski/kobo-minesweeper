@@ -75,6 +75,7 @@ public:
             }
         }
         minesweeper::ui::applyColorMode(theme_, renderer_.info(), settings_.colorMode);
+        minesweeper::ui::applyScreenRefreshInterval(renderer_, settings_.screenRefreshInterval);
 
         if (auto text = minesweeper::persist::loadFile(paths_.game)) {
             try {
@@ -107,6 +108,7 @@ public:
     void autosaveSettings() override {
         minesweeper::persist::saveFileAtomic(paths_.settings, settings_.toJson());
         minesweeper::ui::applyColorMode(theme_, renderer_.info(), settings_.colorMode);
+        minesweeper::ui::applyScreenRefreshInterval(renderer_, settings_.screenRefreshInterval);
     }
 
     void push(std::unique_ptr<minesweeper::ui::Screen> s) override {

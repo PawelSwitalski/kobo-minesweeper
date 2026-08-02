@@ -46,10 +46,40 @@ TEST_CASE("settings.json without a hideTimer key defaults it to false (pre-exist
     CHECK(s.colorMode == ColorMode::Color);  // pre-existing field still loads correctly
 }
 
+TEST_CASE("Settings defaults screenRefreshInterval to Every10") {
+    Settings s;
+    CHECK(s.screenRefreshInterval == ScreenRefreshInterval::Every10);
+}
+
+TEST_CASE("screenRefreshInterval JSON round-trip is lossless for all four values") {
+    for (auto value : {ScreenRefreshInterval::Every5, ScreenRefreshInterval::Every10,
+                        ScreenRefreshInterval::Every25, ScreenRefreshInterval::Never}) {
+        Settings a;
+        a.screenRefreshInterval = value;
+        Settings b = Settings::fromJson(a.toJson());
+        CHECK(b.screenRefreshInterval == value);
+    }
+}
+
+TEST_CASE(
+    "settings.json without a screenRefreshInterval key defaults it to Every10 "
+    "(pre-existing install)") {
+    // Simulates a settings.json written before this field existed.
+    std::string oldFile = R"({"schemaVersion":1,"colorMode":"Color","hideTimer":true})";
+    Settings s = Settings::fromJson(oldFile);
+    CHECK(s.screenRefreshInterval == ScreenRefreshInterval::Every10);
+    CHECK(s.colorMode == ColorMode::Color);  // pre-existing fields still load correctly
+    CHECK(s.hideTimer == true);
+}
+
 TEST_CASE("malformed or invalid settings JSON is rejected") {
     CHECK_THROWS_AS(Settings::fromJson(""), std::exception);
     CHECK_THROWS_AS(Settings::fromJson("{"), std::exception);
     CHECK_THROWS_AS(Settings::fromJson("[]"), std::exception);
     CHECK_THROWS_AS(Settings::fromJson(R"({"schemaVersion":2,"colorMode":"Color"})"), std::exception);
     CHECK_THROWS_AS(Settings::fromJson(R"({"schemaVersion":1,"colorMode":"Purple"})"), std::exception);
+    CHECK_THROWS_AS(
+        Settings::fromJson(
+            R"({"schemaVersion":1,"colorMode":"Color","screenRefreshInterval":"Every7"})"),
+        std::exception);
 }

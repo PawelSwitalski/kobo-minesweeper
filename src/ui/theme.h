@@ -37,4 +37,9 @@ Theme makeTheme(const DisplayInfo& d, const std::string& assetsDir);
 // device still renders in grayscale even if the player selects "Color" (research.md #7).
 void applyColorMode(Theme& theme, const DisplayInfo& display, core::ColorMode colorMode);
 
+// Pushes the player's chosen ghosting-cleanup cadence into the renderer's existing
+// setGhostingInterval contract (Never -> 0, per that contract's own "n <= 0 disables
+// auto-promotion" semantics). No-op on backends without a ghosting concept.
+void applyScreenRefreshInterval(Renderer& renderer, core::ScreenRefreshInterval interval);
+
 }  // namespace minesweeper::ui

@@ -19,6 +19,11 @@ private:
     Button colorButton_{};
     Button blackWhiteButton_{};
     Button hideTimerButton_{};
+    Rect screenRefreshLabelRect_{};
+    Button refresh5Button_{};
+    Button refresh10Button_{};
+    Button refresh25Button_{};
+    Button refreshNeverButton_{};
     Button backButton_{};
 };
 

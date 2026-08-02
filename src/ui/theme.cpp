@@ -27,4 +27,15 @@ void applyColorMode(Theme& theme, const DisplayInfo& display, core::ColorMode co
     theme.color = display.color && colorMode == core::ColorMode::Color;
 }
 
+void applyScreenRefreshInterval(Renderer& renderer, core::ScreenRefreshInterval interval) {
+    int count = 0;
+    switch (interval) {
+        case core::ScreenRefreshInterval::Every5: count = 5; break;
+        case core::ScreenRefreshInterval::Every10: count = 10; break;
+        case core::ScreenRefreshInterval::Every25: count = 25; break;
+        case core::ScreenRefreshInterval::Never: count = 0; break;
+    }
+    renderer.setGhostingInterval(count);
+}
+
 }  // namespace minesweeper::ui
