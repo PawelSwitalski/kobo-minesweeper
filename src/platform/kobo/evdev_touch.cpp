@@ -13,6 +13,13 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+// The koxtoolchain cross-sysroot's linux/input.h predates the MT-B slot protocol constant;
+// 0x2f is ABS_MT_SLOT's stable, longstanding value from the upstream kernel UAPI header
+// (include/uapi/linux/input-event-codes.h), safe to hardcode as a fallback.
+#ifndef ABS_MT_SLOT
+#define ABS_MT_SLOT 0x2f
+#endif
+
 namespace minesweeper {
 
 namespace {
