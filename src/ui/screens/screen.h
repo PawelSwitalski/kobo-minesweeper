@@ -16,6 +16,9 @@ public:
 
     virtual void draw() = 0;
     virtual void onTap(Tap tap) = 0;
+    // A mid-gesture pinch/drag step (specs/005-board-zoom-pan); default no-op since only
+    // BoardScreen has a zoom/pan surface today.
+    virtual void onGesture(core::GestureEvent) {}
     // Called on input timeout with the active seconds since the last call.
     virtual void onTick(uint32_t /*activeSeconds*/) {}
     // Only time spent on screens that return true counts toward any "active

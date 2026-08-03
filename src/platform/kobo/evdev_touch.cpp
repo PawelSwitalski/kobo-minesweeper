@@ -1,9 +1,11 @@
 #include "platform/kobo/evdev_touch.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <utility>
 
 #include <fcntl.h>
 #include <linux/input.h>
@@ -23,6 +25,17 @@ bool hasAbsAxis(int fd, unsigned axis) {
 bool envFlag(const char* name) {
     const char* v = getenv(name);
     return v && *v && *v != '0';
+}
+
+// A Kobo touch panel's slot count is small in practice (2-10); this is a defensive cap, not a
+// hardware limit -- extra slots beyond it are simply never tracked (equivalent to a very large
+// number of "ignored third+ fingers", already a defined case for GestureRecognizer).
+constexpr int kMaxSlots = 16;
+
+int64_t nowMs() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now().time_since_epoch())
+        .count();
 }
 }  // namespace
 
@@ -63,23 +76,52 @@ bool EvdevTouch::init(const DisplayInfo& display) {
             std::fprintf(stderr, "touch: %s EVIOCGRAB failed: %s\n", path, strerror(errno));
 
         fd_ = fd;
+        multiTouch_ = mt;
         rawMinX_ = ax.minimum; rawMaxX_ = ax.maximum;
         rawMinY_ = ay.minimum; rawMaxY_ = ay.maximum;
+
+        int slotCount = 1;
+        if (mt) {
+            input_absinfo aslot{};
+            if (ioctl(fd, EVIOCGABS(ABS_MT_SLOT), &aslot) == 0 && aslot.maximum >= aslot.minimum) {
+                slotCount = aslot.maximum - aslot.minimum + 1;
+            } else {
+                slotCount = 2;  // conservative fallback: enough to recognize a pinch
+            }
+            slotCount = std::min(slotCount, kMaxSlots);
+        }
+        slots_.assign(static_cast<size_t>(slotCount), Slot{});
+        currentSlot_ = 0;
+
         if (debug_)
-            std::fprintf(stderr, "touch: %s mt=%d x[%d..%d] y[%d..%d]\n", path, mt, rawMinX_,
-                         rawMaxX_, rawMinY_, rawMaxY_);
+            std::fprintf(stderr, "touch: %s mt=%d slots=%d x[%d..%d] y[%d..%d]\n", path, mt,
+                         slotCount, rawMinX_, rawMaxX_, rawMinY_, rawMaxY_);
         return true;
     }
     std::fprintf(stderr, "touch: no touchscreen found under /dev/input\n");
     return false;
 }
 
-std::optional<Tap> EvdevTouch::waitForTap(int timeoutMs) {
-    int rawX = -1, rawY = -1;
-    bool sawContact = false, lifted = false;
-    bool downTimeSet = false;
-    std::chrono::steady_clock::time_point downTime{};
+std::pair<int, int> EvdevTouch::toDisplay(int rawX, int rawY) const {
+    int x = rawX, y = rawY;
+    int maxX = rawMaxX_, minX = rawMinX_, maxY = rawMaxY_, minY = rawMinY_;
+    if (swapXY_) {
+        int t = x; x = y; y = t;
+        t = maxX; maxX = maxY; maxY = t;
+        t = minX; minX = minY; minY = t;
+    }
+    int px = (maxX > minX) ? static_cast<int>(static_cast<long long>(x - minX) * (viewW_ - 1) /
+                                               (maxX - minX))
+                            : x;
+    int py = (maxY > minY) ? static_cast<int>(static_cast<long long>(y - minY) * (viewH_ - 1) /
+                                               (maxY - minY))
+                            : y;
+    if (mirrorX_) px = viewW_ - 1 - px;
+    if (mirrorY_) py = viewH_ - 1 - py;
+    return {px, py};
+}
 
+std::optional<std::variant<Tap, core::GestureEvent>> EvdevTouch::waitForEvent(int timeoutMs) {
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
     while (true) {
@@ -105,52 +147,51 @@ std::optional<Tap> EvdevTouch::waitForTap(int timeoutMs) {
         for (size_t k = 0; k < static_cast<size_t>(n) / sizeof(input_event); ++k) {
             const input_event& e = ev[k];
             if (e.type == EV_ABS) {
-                switch (e.code) {
-                    case ABS_MT_POSITION_X: case ABS_X: rawX = e.value; sawContact = true; break;
-                    case ABS_MT_POSITION_Y: case ABS_Y: rawY = e.value; sawContact = true; break;
-                    case ABS_MT_TRACKING_ID:
-                        if (e.value < 0) lifted = true;
-                        else sawContact = true;
-                        break;
-                    default: break;
-                }
-            } else if (e.type == EV_KEY && e.code == BTN_TOUCH) {
-                if (e.value == 0) lifted = true;
-                else sawContact = true;
-            } else if (e.type == EV_SYN && e.code == SYN_REPORT) {
-                if (sawContact && !downTimeSet) {
-                    downTime = std::chrono::steady_clock::now();
-                    downTimeSet = true;
-                }
-                if (lifted && sawContact && rawX >= 0 && rawY >= 0) {
-                    int x = rawX, y = rawY;
-                    int maxX = rawMaxX_, minX = rawMinX_, maxY = rawMaxY_, minY = rawMinY_;
-                    if (swapXY_) {
-                        int t = x; x = y; y = t;
-                        t = maxX; maxX = maxY; maxY = t;
-                        t = minX; minX = minY; minY = t;
+                if (multiTouch_) {
+                    switch (e.code) {
+                        case ABS_MT_SLOT:
+                            currentSlot_ = std::clamp(static_cast<int>(e.value), 0,
+                                                       static_cast<int>(slots_.size()) - 1);
+                            break;
+                        case ABS_MT_TRACKING_ID:
+                            slots_[currentSlot_].trackingId = e.value;  // < 0 means lifted
+                            break;
+                        case ABS_MT_POSITION_X: slots_[currentSlot_].rawX = e.value; break;
+                        case ABS_MT_POSITION_Y: slots_[currentSlot_].rawY = e.value; break;
+                        default: break;
                     }
-                    int px = (maxX > minX)
-                                 ? static_cast<int>(static_cast<long long>(x - minX) *
-                                                    (viewW_ - 1) / (maxX - minX))
-                                 : x;
-                    int py = (maxY > minY)
-                                 ? static_cast<int>(static_cast<long long>(y - minY) *
-                                                    (viewH_ - 1) / (maxY - minY))
-                                 : y;
-                    if (mirrorX_) px = viewW_ - 1 - px;
-                    if (mirrorY_) py = viewH_ - 1 - py;
-                    auto liftTime = std::chrono::steady_clock::now();
-                    bool longPress =
-                        downTimeSet && std::chrono::duration_cast<std::chrono::milliseconds>(
-                                           liftTime - downTime)
-                                               .count() >= kLongPressMs;
-                    if (debug_)
-                        std::fprintf(stderr, "tap raw=(%d,%d) -> (%d,%d) longPress=%d\n", rawX,
-                                     rawY, px, py, longPress);
-                    return Tap{px, py, longPress};
+                } else {
+                    switch (e.code) {
+                        case ABS_X: slots_[0].rawX = e.value; break;
+                        case ABS_Y: slots_[0].rawY = e.value; break;
+                        default: break;
+                    }
                 }
-                lifted = false;
+            } else if (e.type == EV_KEY && e.code == BTN_TOUCH && !multiTouch_) {
+                slots_[0].trackingId = (e.value != 0) ? 0 : -1;
+            } else if (e.type == EV_SYN && e.code == SYN_REPORT) {
+                std::vector<core::TouchPoint> points;
+                for (size_t s = 0; s < slots_.size(); ++s) {
+                    if (slots_[s].trackingId < 0) continue;
+                    auto [px, py] = toDisplay(slots_[s].rawX, slots_[s].rawY);
+                    points.push_back({static_cast<int>(s), px, py});
+                }
+
+                auto result = gestureRecognizer_.feed(points, nowMs());
+                if (!result) continue;
+
+                if (auto* tap = std::get_if<core::GestureTap>(&*result)) {
+                    if (debug_)
+                        std::fprintf(stderr, "tap=(%d,%d) longPress=%d\n", tap->x, tap->y,
+                                     tap->longPress);
+                    return Tap{tap->x, tap->y, tap->longPress};
+                }
+                auto* gesture = std::get_if<core::GestureEvent>(&*result);
+                if (debug_)
+                    std::fprintf(stderr, "gesture kind=%d zoomDelta=%d d=(%d,%d)\n",
+                                 static_cast<int>(gesture->kind), gesture->zoomDelta,
+                                 gesture->dxPx, gesture->dyPx);
+                return *gesture;
             }
         }
     }

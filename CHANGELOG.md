@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.2.0 — 2026-08-03
+
+- Added pinch-to-zoom and drag-to-pan on the board screen: spread two fingers to zoom in (up to
+  3x), pinch them together to zoom back out, and drag one finger to pan around a zoomed-in board —
+  the same gestures used to zoom and pan a map, with no on-screen buttons. Zooming and panning
+  never affect the mine layout, opened/flagged cells, or elapsed time, and reset to the default
+  view whenever a new game starts.
+- Opening a cell whose cascade extends beyond the current view now auto-recenters so the newly
+  revealed cells are always visible.
+- Added a "Screen Refresh" setting to control how many screen updates occur between automatic
+  full clearing refreshes (5/10/25/never), reducing e-ink ghosting to taste.
+
 ## v1.1.0 — 2026-08-02
 
 - Fixed the elapsed-time timer undercounting during active play: it now keeps up with real

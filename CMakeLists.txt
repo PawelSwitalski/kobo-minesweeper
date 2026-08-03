@@ -22,6 +22,8 @@ add_library(minesweeper_core STATIC
   src/core/game_session.cpp
   src/core/settings.cpp
   src/core/active_time_tracker.cpp
+  src/core/board_viewport.cpp
+  src/core/gesture_recognizer.cpp
 )
 target_include_directories(minesweeper_core PUBLIC src third_party)
 
@@ -108,6 +110,8 @@ if(BUILD_TESTS)
     tests/test_game_session.cpp
     tests/test_settings.cpp
     tests/test_active_time_tracker.cpp
+    tests/test_board_viewport.cpp
+    tests/test_gesture_recognizer.cpp
   )
   target_link_libraries(minesweeper_tests PRIVATE minesweeper_core minesweeper_persist)
   add_test(NAME core COMMAND minesweeper_tests)

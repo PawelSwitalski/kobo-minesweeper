@@ -4,6 +4,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "core/active_time_tracker.h"
@@ -221,7 +222,11 @@ int main(int argc, char** argv) {
     auto lastTapSteady = std::chrono::steady_clock::now();
 
     while (!app.exitRequested() && !g_signalled && !sdlQuit && app.top()) {
-        std::optional<minesweeper::Tap> tap = touch.waitForTap(kTimeoutMs);
+        auto event = touch.waitForEvent(kTimeoutMs);
+        std::optional<minesweeper::Tap> tap;
+        if (event) {
+            if (auto* t = std::get_if<minesweeper::Tap>(&*event)) tap = *t;
+        }
 
         auto nowSteady = std::chrono::steady_clock::now();
         auto nowWall = std::chrono::system_clock::now();
@@ -252,6 +257,10 @@ int main(int argc, char** argv) {
         if (tap) {
             lastTapSteady = nowSteady;
             screen->onTap(*tap);
+        } else if (event) {
+            // A mid-gesture pinch/drag step (event held a GestureEvent, not a Tap).
+            lastTapSteady = nowSteady;
+            screen->onGesture(*std::get_if<minesweeper::core::GestureEvent>(&*event));
         } else {
 #if defined(MINESWEEPER_BACKEND_FBINK)
             // Any touchscreen activity counts, not just a completed tap (a
